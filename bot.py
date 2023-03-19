@@ -2,7 +2,6 @@ import logging
 import threading
 import time
 import uuid
-from concurrent.futures.thread import ThreadPoolExecutor
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
@@ -26,6 +25,10 @@ class GameBot:
 
     def getID(self):
         return str(self.bot_id)
+
+    def getGameData(self):
+        outerHTML = str(self.driver.find_element(By.CLASS_NAME, 'battle-field').get_property('outerHTML'))
+        return outerHTML
 
     def getLockStatus(self):
         if self.browser_thread_lock.locked():

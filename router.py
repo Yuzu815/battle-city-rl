@@ -1,8 +1,5 @@
-import _thread
 from flask import request, Blueprint
-
-from bot import GameBot
-from utils import botMap, createBot, botExecutor
+from utils import botMap, createBot, available_game_data_format, parse_game_data
 
 opt = Blueprint('opt', __name__)
 
@@ -29,6 +26,8 @@ def start():
         if not botObject.getLockStatus():
             return {'result': False, 'message': 'Locked'}
         botObject.startBot()
+    except KeyError:
+        return {'result': False, 'message': 'KeyError: The bot does not exist or the UUID field does not exist.'}
     except Exception as e:
         return {'result': False, 'message': str(e)}
     return {'result': True}
@@ -43,6 +42,20 @@ def list_bots():
     return {'result': True, 'data': idList}
 
 
+@opt.route('/data/<string:data_format>', methods=['GET'])
+def get_game_data(data_format):
+    try:
+        if data_format not in available_game_data_format:
+            raise ValueError('Can\'t support {}'.format(data_format))
+        botID = request.form['uuid']
+        result = parse_game_data(botID, data_format)
+    except KeyError:
+        return {'result': False, 'message': 'KeyError: The bot does not exist or the UUID field does not exist.'}
+    except Exception as e:
+        return {'result': False, 'message': str(e)}
+    return {'result': True, 'data': result}
+
+
 @opt.route('/send', methods=['POST'])
 def send_operate_key():
     try:
@@ -52,6 +65,8 @@ def send_operate_key():
             raise KeyError("Invalid Key!")
         botObject = botMap[botID]
         botObject.send_key(key)
+    except KeyError:
+        return {'result': False, 'message': 'KeyError: The bot does not exist or the UUID field does not exist.'}
     except Exception as e:
         return {'result': False, 'message': str(e)}
     return {'result': True}
