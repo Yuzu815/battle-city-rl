@@ -3,6 +3,8 @@ import re
 from bot import create_from_env
 from concurrent.futures import ThreadPoolExecutor
 
+from init_variable import duplicate
+
 botMap = dict()
 botExecutor = ThreadPoolExecutor()
 
@@ -24,6 +26,7 @@ def parse_game_data(botID, data_format: str):
     raw_data = botMap[botID].getGameData()
     pattern = re.compile(r'<image(((?!(<|>)).)*)></image>')
     pattern_data_list = pattern.findall(raw_data)
+    # TODO: 这一pattern不能匹配子弹
     final_data_list = []
     for item in pattern_data_list:
         final_data_list.append(item[0])
@@ -31,7 +34,7 @@ def parse_game_data(botID, data_format: str):
 
 
 def parse_game_data_to_json(data_list):
-    player, enemy, bullet, breakable, impenetrable, other = [] * 6
+    player, enemy, bullet, breakable, impenetrable, other = duplicate([], 6)
     typeMap = {
         'BrickWall': breakable,
         'River': impenetrable,
@@ -42,20 +45,35 @@ def parse_game_data_to_json(data_list):
         'Forest': other,
         'Snow': other
     }
+    for item in data_list:
+        for key, value in typeMap.items():
+            if key in item:
+                position_pattern = r'translate\([-+]?\d+(\.\d+)?,\s*([-+]?\d+(\.\d+)?)\)'
+                rotate_pattern = r'rotate\([-+]?\d+(\.\d+)?\)'
+                position_match = re.search(position_pattern, item)
+                rotate_match = re.search(rotate_pattern, item)
+                result = {}
+                if position_match:
+                    number_list = get_number_list(str(position_match.group()))
+                    x, y = number_list[0], number_list[1]
+                    result.update({'x': x, 'y': y})
+                if rotate_match:
+                    number_list = get_number_list(str(rotate_match.group()))
+                    rotate = number_list[0]
+                    result.update({'rotate': rotate})
+                if result:
+                    value.append(result)
     result = {}
-    Player = {
-        'x': 0,
-        'y': 0,
-        'rotate': 0
-    }
-    Enemy_List = []
-    Bullet_List = []
-    for item in enemy:
-        Enemy_List.append({'x': 0, 'y': 0, 'rotate': 0})
-    result.update({'Player': Player})
-    result.update({'Enemy': Enemy_List})
-    result.update({'Bullet': Bullet_List})
+    result.update({'Player': player})
+    result.update({'Enemy': enemy})
+    result.update({'Bullet': bullet})
     result.update({'Breakable': breakable})
     result.update({'Impenetrable ': impenetrable})
     result.update({'Other': other})  # 此项几乎无用，森林/雪地在Bot视角可视为平地
+    return result
+
+
+def get_number_list(s):
+    pattern = r'\d+(?:\.\d+)?'
+    result = re.findall(pattern, s)
     return result
