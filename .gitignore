@@ -7,3 +7,4 @@
 /battle-city-middleware/.env
 /battle-city-middleware/logs.txt
 /battle-city-middleware/chrome_driver/
+/battle-city-agent/.env
