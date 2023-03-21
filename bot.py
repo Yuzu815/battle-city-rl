@@ -4,6 +4,8 @@ import time
 import uuid
 from selenium import webdriver
 from selenium.webdriver import ActionChains
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
@@ -37,8 +39,11 @@ class GameBot:
 
     def startBot(self):
         self.browser_thread_lock.acquire()
-        self.driver = webdriver.Chrome(self.driver_path)
-        self.driver.get(self.game_url)
+        chrome_options = Options()
+        # chrome_options.add_argument('--headless')
+        # chrome_options.add_argument("--disable-gpu")
+        # chrome_options.add_argument('--no-sandbox')
+        self.driver = webdriver.Chrome(service=Service(self.driver_path), options=chrome_options)
         current_url = self.driver.current_url
         wait = WebDriverWait(self.driver, 0.1)
         while True:
@@ -59,9 +64,7 @@ class GameBot:
                 break
 
     def send_key(self, key):
-        action = ActionChains(self.driver)
-        action.key_down(key, element=None)
-        action.key_up(key, element=None)
+        action = ActionChains(self.driver).key_down(key, element=None).pause(0.1).key_up(key, element=None)
         action.perform()
 
 
