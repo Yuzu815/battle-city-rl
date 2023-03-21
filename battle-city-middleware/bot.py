@@ -44,6 +44,7 @@ class GameBot:
         # chrome_options.add_argument("--disable-gpu")
         # chrome_options.add_argument('--no-sandbox')
         self.driver = webdriver.Chrome(service=Service(self.driver_path), options=chrome_options)
+        self.driver.get(self.game_url)
         current_url = self.driver.current_url
         wait = WebDriverWait(self.driver, 0.1)
         while True:
