@@ -47,7 +47,7 @@ def get_game_data(data_format):
     try:
         if data_format not in available_game_data_format:
             raise ValueError('Can\'t support {}'.format(data_format))
-        botID = request.form['uuid']
+        botID = str(request.form['uuid'])
         result = parse_game_data(botID, data_format)
     except KeyError:
         return {'result': False, 'message': 'KeyError: The bot does not exist or the UUID field does not exist.'}
@@ -59,8 +59,8 @@ def get_game_data(data_format):
 @opt.route('/send', methods=['POST'])
 def send_operate_key():
     try:
-        key = request.form['key']
-        botID = request.form['uuid']
+        key = str(request.form['key'])
+        botID = str(request.form['uuid'])
         if key not in ['w', 'a', 's', 'd', 'j']:
             raise KeyError("Invalid Key!")
         botObject = botMap[botID]
