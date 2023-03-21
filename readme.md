@@ -1,1 +1,0 @@
-![tank.svg](tank.svg)
