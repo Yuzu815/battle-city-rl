@@ -26,19 +26,24 @@ def parse_game_data(botID, data_format: str):
     raw_data = botMap[botID].getGameData()
     pattern = re.compile(r'<image(((?!(<|>)).)*)></image>')
     pattern_data_list = pattern.findall(raw_data)
-    # TODO: 这一pattern不能匹配子弹
+    pattern_bullet = re.compile(r'<g class="bullet" transform="translate[^<>]*>'
+                                r'<rect[^<>]*>[^<>]*</rect>'
+                                r'<rect[^<>]*>[^<>]*</rect></g>')
+    pattern_bullet_data_list = pattern_bullet.findall(raw_data)
     final_data_list = []
     for item in pattern_data_list:
         final_data_list.append(item[0])
+    for item_bullet in pattern_bullet_data_list:
+        final_data_list.append(item_bullet)
     return data_trans_func(final_data_list)
 
 
 def parse_game_data_to_json(data_list):
-    player, enemy, bullet, breakable, impenetrable, other = duplicate([], 6)
+    player, enemy, bullet, breakable, impenetrable_wall, impenetrable_river, other = duplicate([], 7)
     typeMap = {
         'BrickWall': breakable,
-        'River': impenetrable,
-        'steelwall': impenetrable,
+        'River': impenetrable_river,
+        'steelwall': impenetrable_wall,
         'bullet': bullet,
         'Tank/player': player,
         'Tank/bot': enemy,
@@ -68,12 +73,13 @@ def parse_game_data_to_json(data_list):
     result.update({'Enemy': enemy})
     result.update({'Bullet': bullet})
     result.update({'Breakable': breakable})
-    result.update({'Impenetrable ': impenetrable})
+    result.update({'Impenetrable_wall': impenetrable_wall})
+    result.update({'Impenetrable_river': impenetrable_river})
     result.update({'Other': other})  # 此项几乎无用，森林/雪地在Bot视角可视为平地
     return result
 
 
 def get_number_list(s):
-    pattern = r'\d+(?:\.\d+)?'
+    pattern = r'[-+]?\d+(?:\.\d+)?'
     result = re.findall(pattern, s)
     return result
