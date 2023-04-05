@@ -4,7 +4,7 @@
 
 module.exports = dev => ({
   // 是否打印 AI 的日志
-  'DEV.LOG_AI': false,
+  'DEV.LOG_AI': true,
   // 是否启用 console.assert
   'DEV.ASSERT': dev,
   // 是否显示 <SpotGraph />
@@ -20,11 +20,11 @@ module.exports = dev => ({
   // 是否显示 About 信息
   'DEV.HIDE_ABOUT': dev,
   // 是否启用 <Inspector />
-  'DEV.INSPECTOR': false,
+  'DEV.INSPECTOR': true,
   // 是否打印游戏日志
   'DEV.LOG': dev,
   // 是否打印游戏性能相关日志
   'DEV.LOG_PERF': false,
   // 是否跳过关卡选择
-  'DEV.SKIP_CHOOSE_STAGE': false,
+  'DEV.SKIP_CHOOSE_STAGE': true,
 })
