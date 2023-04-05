@@ -4,7 +4,7 @@
   "description": "Battle city remake built with react.",
   "author": "Shi Feichao <842351815@qq.com> (https://shinima.github.io)",
   "scripts": {
-    "start": "webpack-dev-server --mode=development",
+    "start": "export NODE_OPTIONS=--openssl-legacy-provider && webpack-dev-server --mode=development",
     "build": "webpack --mode=production && copyfiles sound/* dist"
   },
   "dependencies": {
@@ -36,7 +36,8 @@
     "react-router-redux": "5.0.0-alpha.9",
     "recompose": "^0.30.0",
     "redux": "^4.0.0",
-    "redux-saga": "1.0.2"
+    "redux-saga": "1.0.2",
+    "yarn": "^1.22.19"
   },
   "devDependencies": {
     "@types/classnames": "^2.2.0",
