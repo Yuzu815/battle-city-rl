@@ -68,11 +68,14 @@ def create_agent():
     )
     createRespondJson = json.loads(createRespond.text)
     uuid = createRespondJson['data']['uuid']
-    requests.post(
-        url=MIDDLE_WARE_URL + '/start',
-        data={'uuid': uuid},
-        timeout=1  # 中间件暂时没实现异步，采用TimeOut Error特殊处理
-    )
+    try:
+        requests.post(
+            url=MIDDLE_WARE_URL + '/start',
+            data={'uuid': uuid},
+            timeout=1  # 中间件暂时没实现异步，采用TimeOut Error特殊处理
+        )
+    except Exception as e:
+        pass
     return uuid
 
 
