@@ -24,7 +24,7 @@ def parse_game_data(botID, data_format: str):
     }
     data_trans_func = data_format_map.get(data_format)
     raw_data = botMap[botID].getGameData()
-    bot_status = botMap[botID].getStatus()
+    bot_status = botMap[botID].returnGameStatus()
     pattern = re.compile(r'<image(((?!(<|>)).)*)></image>')
     pattern_data_list = pattern.findall(raw_data)
     pattern_bullet = re.compile(r'<g class="bullet" transform="translate[^<>]*>'
@@ -78,7 +78,9 @@ def parse_game_data_to_json(data_list, game_status):
     result.update({'Impenetrable_river': impenetrable_river})
     result.update({'Other': other})  # 此项几乎无用，森林/雪地在Bot视角可视为平地
     result.update({'Done': game_status['done']})
-    result.update({'Reward': game_status['reward']})
+    result.update({'HP': game_status['HP']})
+    result.update({'Score': game_status['score']})
+    result.update({'Level': game_status['level']})
     return result
 
 
