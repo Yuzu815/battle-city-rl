@@ -46,33 +46,39 @@ class TankEnv(gym.Env):
         self.uuid = create_agent()
         # 等待远程环境初始化完成
         while True:
-            response_dict = get_agent_data_by_json(uuid=self.uuid)
+            response_dict = self.get_response_dict()
             if response_dict['result'] \
                     and ('Player' in response_dict['data']) \
                     and len(response_dict['data']['Player']) > 0:
                 break
-            time.sleep(0.5)
+            time.sleep(0.1)
         self.HP = 2
         self.level = 1
         self.score = 0
         self.update()
         return copy.deepcopy(self._get_observation()), {}
 
-    def update(self):
+    def get_response_dict(self):
         while True:
-            response_dict = get_agent_data_by_json(uuid=self.uuid)
-            if response_dict['result']:
-                self.canvas = update_canvas(response_dict, self.multiple, self._high)
-                break
-            time.sleep(0.1)
-        Score = response_dict['data']['Score']
-        Done = response_dict['data']['Done']
+            try:
+                response_dict = get_agent_data_by_json(uuid=self.uuid)
+                if response_dict['result']:
+                    self.canvas = update_canvas(response_dict, self.multiple, self._high)
+                    break
+            except KeyError:
+                pass
+        return response_dict
+
+    def update(self):
+        response_dict = self.get_response_dict()
+        score = response_dict['data']['Score']
+        done = response_dict['data']['Done']
         HP = response_dict['data']['HP']
         reward = -self.penalty
-        if Done:
+        if done:
             reward = reward - 500
-        if self.score < Score:
-            reward = reward + (Score - self.score)
+        if self.score < score:
+            reward = reward + (score - self.score)
         if HP < self.HP:
             reward = reward - 200 * (HP - self.HP)
             self.HP = HP
