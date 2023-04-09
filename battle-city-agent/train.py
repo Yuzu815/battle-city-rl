@@ -10,15 +10,15 @@ from ray.rllib.utils.framework import try_import_torch
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.tune.registry import get_trainable_cls
 
+
 torch, nn = try_import_torch()
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--run", type=str, default="PPO", help="The RLlib-registered algorithm to use."
+    "--run", type=str, default="DQN", help="The RLlib-registered algorithm to use."
 )
 parser.add_argument(
     "--framework",
-    choices=["tf", "tf2", "torch"],
     default="torch",
     help="The DL framework specifier.",
 )
@@ -62,7 +62,6 @@ class TorchCustomModel(TorchModelV2, nn.Module):
         self.torch_sub_model = TorchFC(
             obs_space, action_space, num_outputs, model_config, name
         )
-        print(obs_space, action_space)
 
     def forward(self, input_dict, state, seq_lens):
         input_dict["obs"] = input_dict["obs"].float()
@@ -77,7 +76,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"Running with following CLI options: {args}")
 
-    ray.init(local_mode=args.local_mode)
+    ray.init(local_mode=args.local_mode, object_store_memory=7864320000)
 
     ModelCatalog.register_custom_model(
         "my_model", TorchCustomModel
@@ -88,7 +87,7 @@ if __name__ == "__main__":
     config = (
         get_trainable_cls(args.run)
         .get_default_config()
-        .environment(TankEnv, env_config={})
+        .environment(TankEnv, env_config={}, render_env=True)
         .framework(args.framework)
         .rollouts(num_rollout_workers=1)
         .training(
@@ -111,9 +110,9 @@ if __name__ == "__main__":
         args.run,
         param_space=config.to_dict(),
         run_config=air.RunConfig(stop=stop),
+        tune_config=tune.TuneConfig(num_samples=1)
     )
     results = tuner.fit()
-
     if args.as_test:
         print("Checking if learning goals were achieved")
         check_learning_achieved(results, args.stop_reward)
