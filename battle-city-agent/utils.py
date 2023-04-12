@@ -1,10 +1,13 @@
 import json
+
+import numpy as np
 import requests
 import cv2
 from load_env import MIDDLE_WARE_URL
 
 
-def update_canvas(dic, canvas, mul):
+def update_canvas(dic, mul, length) -> np.array:
+    canvas = 255 * np.ones(shape=[length, length, 3], dtype=np.uint8)
     # 河流
     for item in dic['data']['Impenetrable_river']:
         pos_x = int(round(float(item['x']))) * mul
@@ -41,6 +44,7 @@ def update_canvas(dic, canvas, mul):
         pos_x = int(round(float(item['x']))) * mul
         pos_y = int(round(float(item['y']))) * mul
         cv2.rectangle(canvas, (pos_x, pos_y), (pos_x + 3 * mul, pos_y + 3 * mul), (0, 0, 0), thickness=-1)
+    return canvas
 
 
 def trans_tank_position(pos_x: int, pos_y: int, diff: int, rotate: int) -> (int, int):

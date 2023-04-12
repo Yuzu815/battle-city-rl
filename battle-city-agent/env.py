@@ -72,7 +72,7 @@ class TankEnv(gym.Env):
                 if response_dict['result']:
                     self.canvas = update_canvas(response_dict, self.multiple, self._high)
                     break
-                elif fail_count > 100:
+                elif fail_count > 1000:
                     break
                 else:
                     fail_count = fail_count + 1

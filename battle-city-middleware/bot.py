@@ -40,9 +40,12 @@ class GameBot:
         return str(self.bot_id)
 
     def getGameDataFromXPath(self) -> dict:
-        xpath = r'/html/body/div/div/div/div[2]/pre[2]'
-        content = self.driver.find_element(By.XPATH, xpath).text
-        return json.loads(content)
+        try:
+            xpath = r'/html/body/div/div/div/div[2]/pre[2]'
+            content = self.driver.find_element(By.XPATH, xpath).text
+            return json.loads(content)
+        except Exception as e:
+            print(str(e))
 
     def getGameData(self):
         outerHTML = str(self.driver.find_element(By.CLASS_NAME, 'battle-field').get_property('outerHTML'))
@@ -73,32 +76,33 @@ class GameBot:
         }
 
     def startBot(self):
-        with self.browser_thread_lock:
-            chrome_options = Options()
-            # chrome_options.add_argument('--headless')
-            # chrome_options.add_argument("--disable-gpu")
-            # chrome_options.add_argument('--no-sandbox')
-            self.driver = webdriver.Chrome(service=Service(self.driver_path), options=chrome_options)
-            self.driver.get(self.game_url)
-            current_url = self.driver.current_url
-            wait = WebDriverWait(self.driver, 0.1)
-            while True:
-                try:
-                    wait.until(expected_conditions.url_changes(current_url))
-                    current_url = self.driver.current_url
-                    time.sleep(0.1)
-                except TimeoutException:
-                    logging.info('selenium.current_url未改变，当前请求链接为：{}'.format(current_url))
-                    if current_url.endswith('gameover'):
-                        self.done = True
-                        logging.info('游戏结束，60s后游戏对象自我销毁')
-                        time.sleep(60)
-                        break
-                except NoSuchElementException:
-                    logging.warning('已脱离游戏状态，无法捕获对应元素')
-                except Exception as e:
-                    logging.error(str(e))
+        # with self.browser_thread_lock:
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument('--no-sandbox')
+        self.driver = webdriver.Chrome(service=Service(self.driver_path), options=chrome_options)
+        self.driver.get(self.game_url)
+        current_url = self.driver.current_url
+        wait = WebDriverWait(self.driver, 0.1)
+        while True:
+            try:
+                wait.until(expected_conditions.url_changes(current_url))
+                current_url = self.driver.current_url
+                time.sleep(0.1)
+            except TimeoutException:
+                logging.info('selenium.current_url未改变，当前请求链接为：{}'.format(current_url))
+                if current_url.endswith('gameover'):
+                    self.done = True
+                    logging.info('游戏结束，60s后游戏对象自我销毁')
+                    time.sleep(60)
                     break
+            except NoSuchElementException:
+                logging.warning('已脱离游戏状态，无法捕获对应元素')
+            except Exception as e:
+                logging.error(str(e))
+                break
+        self.driver.quit()
 
     def send_key(self, key):
         action = ActionChains(self.driver).key_down(key, element=None).pause(0.1).key_up(key, element=None)

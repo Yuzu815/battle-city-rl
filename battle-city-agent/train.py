@@ -1,57 +1,16 @@
-import argparse
-import os
-
+import random
 import ray
-from ray import air, tune
 from ray.rllib.models import ModelCatalog
-from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
+from ray import air, tune
 from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.utils.framework import try_import_torch
-from ray.rllib.utils.test_utils import check_learning_achieved
-from ray.tune.registry import get_trainable_cls
-
+from ray.tune.schedulers import PopulationBasedTraining
 
 torch, nn = try_import_torch()
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--run", type=str, default="DQN", help="The RLlib-registered algorithm to use."
-)
-parser.add_argument(
-    "--framework",
-    default="torch",
-    help="The DL framework specifier.",
-)
-parser.add_argument(
-    "--as-test",
-    action="store_true",
-    help="Whether this script should be run as a test: --stop-reward must "
-         "be achieved within --stop-timesteps AND --stop-iters.",
-)
-parser.add_argument(
-    "--stop-iters", type=int, default=50, help="Number of iterations to train."
-)
-parser.add_argument(
-    "--stop-timesteps", type=int, default=100000, help="Number of timesteps to train."
-)
-parser.add_argument(
-    "--stop-reward", type=float, default=0.1, help="Reward at which we stop training."
-)
-parser.add_argument(
-    "--no-tune",
-    action="store_true",
-    help="Run without Tune using a manual train loop instead. In this case,"
-         "use PPO without grid search and no TensorBoard.",
-)
-parser.add_argument(
-    "--local-mode",
-    action="store_true",
-    help="Init Ray in local mode for easier debugging.",
-)
-
 
 class TorchCustomModel(TorchModelV2, nn.Module):
-    """Example of a PyTorch custom model that just delegates to a fc-net."""
 
     def __init__(self, obs_space, action_space, num_outputs, model_config, name):
         TorchModelV2.__init__(
@@ -73,48 +32,78 @@ class TorchCustomModel(TorchModelV2, nn.Module):
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    print(f"Running with following CLI options: {args}")
+    # local_mode
+    ray.init(local_mode=True, dashboard_host='0.0.0.0')
 
-    ray.init(local_mode=args.local_mode, object_store_memory=7864320000)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--smoke-test", action="store_true", help="Finish quickly for testing"
+    )
+    args, _ = parser.parse_known_args()
+
+
+    def explore(config):
+        if config["train_batch_size"] < config["sgd_minibatch_size"] * 2:
+            config["train_batch_size"] = config["sgd_minibatch_size"] * 2
+        if config["num_sgd_iter"] < 1:
+            config["num_sgd_iter"] = 1
+        return config
+
+
+    hyperparam_mutations = {
+        "lambda": lambda: random.uniform(0.9, 1.0),
+        "clip_param": lambda: random.uniform(0.01, 0.5),
+        "lr": [1e-3, 5e-4, 1e-4, 5e-5, 1e-5],
+        "num_sgd_iter": lambda: random.randint(1, 30),
+        "sgd_minibatch_size": lambda: random.randint(64, 2048),
+        "train_batch_size": lambda: random.randint(2000, 10000),
+    }
+
+    pbt = PopulationBasedTraining(
+        time_attr="time_total_s",
+        perturbation_interval=120,
+        resample_probability=0.25,
+        hyperparam_mutations=hyperparam_mutations,
+        custom_explore_fn=explore,
+    )
+
+    stopping_criteria = {"training_iteration": 2000, "episode_reward_mean": 5}
+
+    from env import TankEnv
 
     ModelCatalog.register_custom_model(
         "my_model", TorchCustomModel
     )
 
-    from env import TankEnv
-
-    config = (
-        get_trainable_cls(args.run)
-        .get_default_config()
-        .environment(TankEnv, env_config={}, render_env=True)
-        .framework(args.framework)
-        .rollouts(num_rollout_workers=1)
-        .training(
-            model={
-                "custom_model": "my_model",
-                "vf_share_layers": True,
-            }
-        )
-        .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0")))
-    )
-
-    stop = {
-        "training_iteration": args.stop_iters,
-        "timesteps_total": args.stop_timesteps,
-        "episode_reward_mean": args.stop_reward,
-    }
-
-    print("Training automatically with Ray Tune")
     tuner = tune.Tuner(
-        args.run,
-        param_space=config.to_dict(),
-        run_config=air.RunConfig(stop=stop),
-        tune_config=tune.TuneConfig(num_samples=1)
+        "PPO",
+        tune_config=tune.TuneConfig(
+            metric="episode_reward_mean",
+            mode="max",
+            scheduler=pbt,
+            num_samples=1 if args.smoke_test else 2,
+        ),
+        param_space={
+            "env": TankEnv,
+            "kl_coeff": 1.0,
+            "num_workers": 4,
+            "num_cpus": 1,
+            "num_gpus": 0,
+            "lambda": 0.95,
+            "clip_param": 0.2,
+            "model": {"dim": 780, "conv_filters": [[32, [4, 4], 2], [64, [4, 4], 2], [128, [8, 8], 2], [256, [16, 16], 2], [512, [49, 49], 1]]},
+            "lr": 1e-4,
+            "num_sgd_iter": tune.choice([10, 20, 30]),
+            "sgd_minibatch_size": tune.choice([1]),
+            "train_batch_size": tune.choice([1]),
+            "framework": "torch",
+        },
+        run_config=air.RunConfig(
+		stop=stopping_criteria,
+		name="experiment_name",
+        	local_dir="~/ray_results",
+	),
     )
     results = tuner.fit()
-    if args.as_test:
-        print("Checking if learning goals were achieved")
-        check_learning_achieved(results, args.stop_reward)
-
-    ray.shutdown()
